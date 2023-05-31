@@ -4,3 +4,7 @@
 # nix stuff
 .direnv/
 result
+
+# zig stuff
+zig-cache/
+zig-out/
