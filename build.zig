@@ -2,7 +2,6 @@ const std = @import("std");
 const builtin = @import("builtin");
 const app_name = "demoviewer";
 
-
 pub fn build(b: *std.Build) !void {
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
@@ -13,14 +12,14 @@ pub fn build(b: *std.Build) !void {
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardOptimizeOption(.{});
-    
+
     const exe = b.addExecutable(.{
         .name = app_name,
         .optimize = mode,
         .target = target,
         .root_file = "main.zig",
     });
-    
+
     switch (target.getOsTag()) {
         .windows => {
             exe.linkSystemLibrary("winmm");
