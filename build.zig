@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) !void {
         .name = app_name,
         .optimize = mode,
         .target = target,
-        .root_source_file = std.Build.FileSource.relative("main.zig"),
+        .root_source_file = std.Build.FileSource.relative("src/main.zig"),
     });
 
     switch (target.getOsTag()) {
