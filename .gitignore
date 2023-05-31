@@ -1,0 +1,6 @@
+# I test out demos but I dont want them on git lol
+*.dem
+
+# nix stuff
+.direnv/
+result
