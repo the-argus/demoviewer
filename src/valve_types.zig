@@ -22,9 +22,11 @@ pub const frame_commands_78 = enum(i32) {
     dem_stop = 7, // data completed, demo over
 };
 
-pub const frame_commands_1415 = enum(i32) { dem_stringtables = 8 };
+pub const frame_commands_1415 = enum(u8) {
+    dem_stringtables = 8,
+};
 
-pub const frame_commands_36plus = enum(i32) {
+pub const frame_commands_36plus = enum(u8) {
     dem_customdata = 8,
     dem_stringtables = 9,
 };
@@ -34,12 +36,13 @@ pub const Packet = struct {
     unknown: i32,
     tickcount: i32,
     size_of_packet: i32,
-    buffer: []u8, // where the length should be equal to size_of_packet
+    buffer: *[]u8, // where the length should be equal to size_of_packet
 };
 
 pub const Frame = struct {
     server_frame: i32,
     client_frame: i32,
     subpacketsize: i32,
-    buffer: []u8, // where the length should be equal to size_of_packet
+    buffer: *[]u8, // length equal to subpacketsize
+    pkt: Packet,
 };
