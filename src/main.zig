@@ -6,9 +6,32 @@ const DemoReadError = error{
     BadHeader,
 };
 
-pub fn print_demo(demo: valve_types.DemoHeader) void {
-    std.debug.print();
-    _ = demo;
+pub fn print_demo_header(demo_header: valve_types.DemoHeader) void {
+    std.debug.print(
+        \\Header: {s}
+        \\Protocol: {any}
+        \\Network Protocol: {any}
+        \\Server Name: {s}
+        \\Client Name: {s}
+        \\Map Name: {s}
+        \\Game Directory: {s}
+        \\Playback Time: {any}
+        \\Ticks: {any}
+        \\Frames: {any}
+        \\Signon Length: {any}
+    , .{
+        demo_header.header,
+        demo_header.demo_protocol,
+        demo_header.network_protocol,
+        demo_header.server_name,
+        demo_header.client_name,
+        demo_header.map_name,
+        demo_header.game_directory,
+        demo_header.playback_time,
+        demo_header.ticks,
+        demo_header.frames,
+        demo_header.signon_length,
+    });
 }
 
 pub fn assert_header_good(header: valve_types.DemoHeader, allocator: std.mem.Allocator) !void {
@@ -20,7 +43,6 @@ pub fn assert_header_good(header: valve_types.DemoHeader, allocator: std.mem.All
     control_header[hsize - 1] = 0; // add null byte
 
     std.debug.print("header length: {any}, control_header length: {any}\n", .{ header.header.len, control_header.len });
-    std.debug.print("header.header: {s}\n", .{header.header});
     for (header.header, control_header) |header_char, control_char| {
         if (header_char != control_char) {
             return DemoReadError.BadHeader;
@@ -41,6 +63,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
 
     const real_header = @bitCast(valve_types.DemoHeader, header);
     try assert_header_good(real_header, allocator);
+    print_demo_header(header);
 
     std.debug.print("{any}\n", .{bytes_read_for_header});
 }
