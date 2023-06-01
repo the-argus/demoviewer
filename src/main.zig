@@ -63,7 +63,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
 
     const real_header = @bitCast(valve_types.DemoHeader, header);
     try assert_header_good(real_header, allocator);
-    print_demo_header(header);
+    print_demo_header(real_header);
 
     std.debug.print("{any}\n", .{bytes_read_for_header});
 }
