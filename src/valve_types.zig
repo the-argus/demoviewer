@@ -48,3 +48,21 @@ pub const Frame = extern struct {
     buffer: *[]u8, // length equal to subpacketsize
     pkt: Packet,
 };
+
+pub const Vector = extern struct { x: f32, y: f32, z: f32 };
+pub const Angle = Vector;
+
+const FDEMO_NORMAL = 0;
+const FDEMO_USE_ORIGIN2 = 1 << 0;
+const FDEMO_USE_ANGLES2 = 1 << 1;
+const FDEMO_NOINTERP = 1 << 2;
+
+pub const DemoCommand = extern struct {
+    flags: i32 = FDEMO_NORMAL,
+    view_origin: Vector,
+    view_angles: Angle,
+    local_view_angles: Angle,
+    view_origin_2: Vector,
+    view_angles_2: Angle,
+    local_view_angles_2: Angle,
+};
