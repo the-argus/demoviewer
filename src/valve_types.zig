@@ -30,7 +30,7 @@ pub const demo_messages =
     dem_stop = 7,
     dem_stringtables = 8,
     // Last command
-    dem_lastcmd = 8,
+    // dem_lastcmd = 8,
 };
 
 pub const Packet = extern struct {
