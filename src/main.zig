@@ -158,6 +158,17 @@ pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence
     }
 }
 
+pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoCommandInfo) !void {
+    var buf: [@sizeOf(valve_types.DemoCommandInfo)]u8 = undefined;
+    bytes_read = try file.read(&buf);
+    if (bytes_read < buf.len) {
+        return DemoReadError.EarlyTermination;
+    }
+    if (command_info) |info| {
+        info.* = @bitCast(i32, buf);
+    }
+}
+
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     const demo_file = try std.fs.cwd().openFile(relative_path, .{});
     defer demo_file.close();
@@ -202,8 +213,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
             }
         }
 
-        // TODO: implement the smoothing reading stuff (basically the default case)
-        // ReadCmdInfo
+        read_command_info(demo_file, null);
         try read_sequence_info(demo_file, null, null);
         _ = try read_raw_data(demo_file, null);
     }
