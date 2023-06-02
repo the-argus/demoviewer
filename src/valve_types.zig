@@ -57,7 +57,7 @@ const FDEMO_USE_ORIGIN2 = 1 << 0;
 const FDEMO_USE_ANGLES2 = 1 << 1;
 const FDEMO_NOINTERP = 1 << 2;
 
-pub const DemoCommand = extern struct {
+pub const DemoCommandInfo = extern struct {
     flags: i32 = FDEMO_NORMAL,
     view_origin: Vector,
     view_angles: Angle,

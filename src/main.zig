@@ -5,12 +5,7 @@ const DemoReadError = error{
     TooSmall,
     BadHeader,
     EarlyTermination,
-};
-
-const ReadStatus = enum {
-    PacketIsNext,
-    MessageIsNext,
-    EndOfDemo,
+    InvalidDemoMessage,
 };
 
 pub fn print_demo_header(demo_header: valve_types.DemoHeader) void {
@@ -41,6 +36,24 @@ pub fn print_demo_header(demo_header: valve_types.DemoHeader) void {
     });
 }
 
+pub fn print_packet(packet: valve_types.Packet) void {
+    std.debug.print(
+        \\Found packet:
+        \\  cmd_type: {any}
+        \\  unknown: {any}
+        \\  tickcount: {any}
+        \\  size_of_packet: {any}
+        \\  buffer pointer: {any}
+        \\
+    , .{
+        packet.cmd_type,
+        packet.unknown,
+        packet.tickcount,
+        packet.size_of_packet,
+        packet.buffer,
+    });
+}
+
 pub fn assert_header_good(header: valve_types.DemoHeader, allocator: std.mem.Allocator) !void {
     const hsize = header.header.len;
     const control_header = try allocator.alloc(u8, hsize);
@@ -57,13 +70,41 @@ pub fn assert_header_good(header: valve_types.DemoHeader, allocator: std.mem.All
     }
 }
 
-pub fn next_byte_status(message: valve_types.demo_messages) ReadStatus {
-    if (message == .dem_synctick or message == .dem_signon or message == .dem_packet) {
-        return ReadStatus.MessageIsNext;
-    } else if (message == .dem_stop) {
-        return ReadStatus.EndOfDemo;
+pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, tick: *i32) !void {
+    // first read into cmd
+    {
+        var buf: [1]u8 = undefined;
+        const bytes_read = try file.read(cmd);
+
+        // handle i/o failure
+        if (bytes_read <= 0) {
+            std.debug.warn("Missing end tag in demo file.\n");
+            cmd.* = .dem_stop;
+            return;
+        }
+
+        // get actual demo value
+        var valid_demo_message = false;
+        for (std.enums.values(valve_types.demo_messages)) |message_type| {
+            if (buf[0] == @enumToInt(message_type)) {
+                cmd.* = message_type;
+                valid_demo_message = true;
+                break;
+            }
+        }
+        // err on failure
+        if (!valid_demo_message) {
+            return DemoReadError.InvalidDemoMessage;
+        }
     }
-    return ReadStatus.PacketIsNext;
+
+    // now read the tick
+    var buf: [@sizeOf(i32)]u8 = undefined;
+    const bytes_read = file.read(&buf);
+    if (bytes_read <= 0) {
+        return DemoReadError.EarlyTermination;
+    }
+    tick.* = @bitCast(i32, buf);
 }
 
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
@@ -81,63 +122,36 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     try assert_header_good(real_header, allocator);
     print_demo_header(real_header);
 
-    std.debug.print("{any}\n", .{bytes_read_for_header});
+    // const info : valve_types.DemoCommandInfo = undefined;
+    process_demo: while (true) {
+        var tick: i32 = 0;
+        var cmd: [1]u8 = undefined;
+        swallowing_messages: while (true) {
+            try read_command_header(demo_file, &cmd, &tick);
 
-    // now start reading bytes, look for one that signals another frame being
-    // next.
-    while (true) {
-        // collect message
-        var message: valve_types.demo_messages = undefined;
-        {
-            var buf: [1]u8 = undefined;
-            _ = try demo_file.read(&buf);
-            var valid_demo_message = false;
-            for (std.enums.values(valve_types.demo_messages)) |message_type| {
-                if (buf[0] == @enumToInt(message_type)) {
-                    message = message_type;
-                    valid_demo_message = true;
+            switch (cmd) {
+                .dem_synctick => {
                     break;
-                }
+                },
+                .dem_stop => {
+                    break :process_demo;
+                },
+                .dem_consolecmd => {
+                    // TODO: read console command
+                },
+                .dem_datatables => {
+                    // TODO: read network data tables (basically jus a seek)
+                },
+                .dem_usercmd => {
+                    // TODO: readnetworkdatatables (also just a seek)
+                },
+                else => {
+                    break :swallowing_messages;
+                },
             }
-            if (!valid_demo_message) {
-                std.debug.print("Invalid demo message found: {any}\n", .{buf[0]});
-                continue;
-            }
-            std.debug.print("Found message {?s}\n", .{std.enums.tagName(valve_types.demo_messages, message)});
         }
-        // maybe read a packet
-        switch (next_byte_status(message)) {
-            .EndOfDemo => {
-                break;
-            },
-            .MessageIsNext => {
-                continue;
-            },
-            .PacketIsNext => {
-                var packet: valve_types.Packet = undefined;
-                var buf: [@sizeOf(valve_types.Packet)]u8 = undefined;
-                const bytes_read = try demo_file.read(&buf);
-                if (bytes_read < buf.len) {
-                    return DemoReadError.EarlyTermination;
-                }
-                packet = @bitCast(valve_types.Packet, buf);
-                std.debug.print(
-                    \\Found packet:
-                    \\  cmd_type: {any}
-                    \\  unknown: {any}
-                    \\  tickcount: {any}
-                    \\  size_of_packet: {any}
-                    \\  buffer pointer: {any}
-                    \\
-                , .{
-                    packet.cmd_type,
-                    packet.unknown,
-                    packet.tickcount,
-                    packet.size_of_packet,
-                    packet.buffer,
-                });
-            },
-        }
+
+        // TODO: implement the smoothing reading stuff (basically the default case)
     }
 }
 
