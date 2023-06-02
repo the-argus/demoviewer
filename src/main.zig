@@ -2,10 +2,11 @@ const std = @import("std");
 const valve_types = @import("valve_types.zig");
 
 const DemoReadError = error{
-    TooSmall,
     BadHeader,
     EarlyTermination,
     InvalidDemoMessage,
+    NotEnoughMemory,
+    FileDoesNotMatchPromised,
 };
 
 pub fn print_demo_header(demo_header: valve_types.DemoHeader) void {
@@ -107,6 +108,36 @@ pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, t
     tick.* = @bitCast(i32, buf);
 }
 
+/// Recieve a file and read an amount into the buffer. return amount read
+pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
+    var bytes_read: i32 = undefined;
+
+    // first get the size of the data packet
+    var size_buffer: [@sizeOf(i32)]u8 = undefined;
+    bytes_read = try file.read(size_buffer);
+    if (bytes_read < @sizeOf(i32)) {
+        return DemoReadError.EarlyTermination;
+    }
+    const size = @bitCast(i32, size_buffer);
+
+    // try to read that size into the buffer
+    if (opt_buffer) |buffer| {
+        if (buffer.len < size) {
+            return DemoReadError.NotEnoughMemory;
+        }
+
+        bytes_read = try file.read(buffer);
+        if (bytes_read != size) {
+            return DemoReadError.FileDoesNotMatchPromised;
+        }
+    } else {
+        // skip the promised packet
+        file.seekBy(size);
+    }
+
+    return size;
+}
+
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     const demo_file = try std.fs.cwd().openFile(relative_path, .{});
     defer demo_file.close();
@@ -115,7 +146,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     var header: [header_size]u8 = undefined;
     const bytes_read_for_header = try demo_file.read(&header);
     if (bytes_read_for_header != header_size) {
-        return DemoReadError.TooSmall;
+        return DemoReadError.EarlyTermination;
     }
 
     const real_header = @bitCast(valve_types.DemoHeader, header);
@@ -152,6 +183,9 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
         }
 
         // TODO: implement the smoothing reading stuff (basically the default case)
+        // ReadCmdInfo
+        // ReadSequenceInfo
+        // ReadRawData
     }
 }
 
