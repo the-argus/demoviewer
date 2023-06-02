@@ -22,6 +22,7 @@ pub fn print_demo_header(demo_header: valve_types.DemoHeader) void {
         \\Ticks: {any}
         \\Frames: {any}
         \\Signon Length: {any}
+        \\
     , .{
         demo_header.header,
         demo_header.demo_protocol,
@@ -63,7 +64,6 @@ pub fn assert_header_good(header: valve_types.DemoHeader, allocator: std.mem.All
     @memcpy(control_header, "HL2DEMO0");
     control_header[hsize - 1] = 0; // add null byte
 
-    std.debug.print("header length: {any}, control_header length: {any}\n", .{ header.header.len, control_header.len });
     for (header.header, control_header) |header_char, control_char| {
         if (header_char != control_char) {
             return DemoReadError.BadHeader;
@@ -75,11 +75,11 @@ pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, t
     // first read into cmd
     {
         var buf: [1]u8 = undefined;
-        const bytes_read = try file.read(cmd);
+        const bytes_read = try file.read(&buf);
 
         // handle i/o failure
         if (bytes_read <= 0) {
-            std.debug.warn("Missing end tag in demo file.\n");
+            std.debug.print("Missing end tag in demo file.\n", .{});
             cmd.* = .dem_stop;
             return;
         }
@@ -101,7 +101,7 @@ pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, t
 
     // now read the tick
     var buf: [@sizeOf(i32)]u8 = undefined;
-    const bytes_read = file.read(&buf);
+    const bytes_read = try file.read(&buf);
     if (bytes_read <= 0) {
         return DemoReadError.EarlyTermination;
     }
@@ -110,11 +110,9 @@ pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, t
 
 /// Recieve a file and read an amount into the buffer. return amount read
 pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
-    var bytes_read: i32 = undefined;
-
     // first get the size of the data packet
     var size_buffer: [@sizeOf(i32)]u8 = undefined;
-    bytes_read = try file.read(size_buffer);
+    var bytes_read = try file.read(&size_buffer);
     if (bytes_read < @sizeOf(i32)) {
         return DemoReadError.EarlyTermination;
     }
@@ -126,16 +124,38 @@ pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
             return DemoReadError.NotEnoughMemory;
         }
 
-        bytes_read = try file.read(buffer);
+        bytes_read = try file.read(buffer.*);
         if (bytes_read != size) {
             return DemoReadError.FileDoesNotMatchPromised;
         }
     } else {
         // skip the promised packet
-        file.seekBy(size);
+        file.seekBy(size) catch {
+            return DemoReadError.EarlyTermination;
+        };
     }
 
     return size;
+}
+
+pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence_number_out: ?*i32) !void {
+    var buf: [@sizeOf(i32)]u8 = undefined;
+
+    var bytes_read = try file.read(&buf);
+    if (bytes_read < buf.len) {
+        return DemoReadError.EarlyTermination;
+    }
+    if (sequence_number_in) |in| {
+        in.* = @bitCast(i32, buf);
+    }
+
+    bytes_read = try file.read(&buf);
+    if (bytes_read < buf.len) {
+        return DemoReadError.EarlyTermination;
+    }
+    if (sequence_number_out) |out| {
+        out.* = @bitCast(i32, buf);
+    }
 }
 
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
@@ -156,7 +176,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     // const info : valve_types.DemoCommandInfo = undefined;
     process_demo: while (true) {
         var tick: i32 = 0;
-        var cmd: [1]u8 = undefined;
+        var cmd: valve_types.demo_messages = undefined;
         swallowing_messages: while (true) {
             try read_command_header(demo_file, &cmd, &tick);
 
@@ -184,8 +204,8 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
 
         // TODO: implement the smoothing reading stuff (basically the default case)
         // ReadCmdInfo
-        // ReadSequenceInfo
-        // ReadRawData
+        try read_sequence_info(demo_file, null, null);
+        _ = try read_raw_data(demo_file, null);
     }
 }
 
