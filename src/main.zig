@@ -178,6 +178,36 @@ pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoComm
     }
 }
 
+pub fn read_network_datatables(file: std.fs.File) !i32 {
+    var data: [1024]u8 = undefined;
+    var size: i32 = undefined;
+    {
+        var buf: [@sizeOf(i32)]u8 = undefined;
+        _ = try file.read(&buf);
+        size = @bitCast(i32, buf);
+    }
+
+    while (size > 0) {
+        const chunk: i32 = std.math.min(size, 1024);
+        const slice: *[@as(usize, chunk)]u8 = &data;
+        _ = try file.read(slice);
+        size -= chunk;
+        // TODO: add an "out" argument to this function, write to it here.
+        // needs to be some sort of IO stream to allow continuous writing.
+    }
+
+    return size;
+}
+
+pub fn read_user_cmd(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
+    var outgoing_sequence: i32 = undefined;
+    try file.read(&outgoing_sequence);
+    if (opt_buffer) |buf| {
+        try read_raw_data(buf);
+    }
+    return outgoing_sequence;
+}
+
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     const demo_file = try std.fs.cwd().openFile(relative_path, .{});
     defer demo_file.close();
@@ -211,7 +241,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
                     try read_console_command(demo_file, null);
                 },
                 .dem_datatables => {
-                    // TODO: read network data tables (basically jus a seek)
+                    try read_network_datatables(demo_file);
                 },
                 .dem_usercmd => {
                     // TODO: readusercmd (also just a seek)
