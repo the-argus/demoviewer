@@ -140,7 +140,8 @@ pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
 
 pub fn read_console_command(file: std.fs.File, out: ?*[1024]u8) !void {
     var buf: [1024]u8 = undefined;
-    read_raw_data(file, &buf);
+    var alt: []u8 = &buf;
+    _ = try read_raw_data(file, &alt);
     if (out) |out_ptr| {
         @memcpy(out_ptr, &buf);
     }
@@ -213,7 +214,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
                     // TODO: read network data tables (basically jus a seek)
                 },
                 .dem_usercmd => {
-                    // TODO: readnetworkdatatables (also just a seek)
+                    // TODO: readusercmd (also just a seek)
                 },
                 else => {
                     break :swallowing_messages;
