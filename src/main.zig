@@ -3,6 +3,7 @@ const valve_types = @import("valve_types.zig");
 
 const DemoReadError = error{
     BadHeader,
+    Corruption,
     EarlyTermination,
     InvalidDemoMessage,
     NotEnoughMemory,
@@ -178,18 +179,22 @@ pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoComm
     }
 }
 
-pub fn read_network_datatables(file: std.fs.File) !i32 {
+pub fn read_network_datatables(file: std.fs.File) !usize {
     var data: [1024]u8 = undefined;
-    var size: i32 = undefined;
+    var size: usize = undefined;
     {
         var buf: [@sizeOf(i32)]u8 = undefined;
         _ = try file.read(&buf);
-        size = @bitCast(i32, buf);
+        const int_size = @bitCast(i32, buf);
+        if (int_size < 0) {
+            return DemoReadError.Corruption;
+        }
+        size = @intCast(usize, int_size);
     }
 
     while (size > 0) {
-        const chunk: i32 = std.math.min(size, 1024);
-        const slice: *[@as(usize, chunk)]u8 = &data;
+        const chunk: usize = std.math.min(size, 1024);
+        const slice: []u8 = data[0..chunk];
         _ = try file.read(slice);
         size -= chunk;
         // TODO: add an "out" argument to this function, write to it here.
@@ -201,9 +206,16 @@ pub fn read_network_datatables(file: std.fs.File) !i32 {
 
 pub fn read_user_cmd(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
     var outgoing_sequence: i32 = undefined;
-    try file.read(&outgoing_sequence);
+    {
+        var buf: [@sizeOf(i32)]u8 = undefined;
+        const bytes_read = try file.read(&buf);
+        if (bytes_read < buf.len) {
+            return DemoReadError.EarlyTermination;
+        }
+        outgoing_sequence = @bitCast(i32, buf);
+    }
     if (opt_buffer) |buf| {
-        try read_raw_data(buf);
+        _ = try read_raw_data(file, buf);
     }
     return outgoing_sequence;
 }
@@ -241,10 +253,10 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
                     try read_console_command(demo_file, null);
                 },
                 .dem_datatables => {
-                    try read_network_datatables(demo_file);
+                    _ = try read_network_datatables(demo_file);
                 },
                 .dem_usercmd => {
-                    // TODO: readusercmd (also just a seek)
+                    _ = try read_user_cmd(demo_file, null);
                 },
                 else => {
                     break :swallowing_messages;
