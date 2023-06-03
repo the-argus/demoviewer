@@ -1,12 +1,12 @@
 const std = @import("std");
 const valve_types = @import("valve_types.zig");
 
-const demo_debug = @import("demo_debug");
+const demo_debug = @import("demo_debug.zig");
 const DemoReadError = demo_debug.DemoReadError;
 const assert_header_good = demo_debug.assert_header_good;
 const print_demo_header = demo_debug.print_demo_header;
 
-const demo_sections = @import("demo_sections");
+const demo_sections = @import("demo_sections.zig");
 const read_command_header = demo_sections.read_command_header;
 const read_console_command = demo_sections.read_console_command;
 const read_network_datatables = demo_sections.read_network_datatables;
@@ -39,18 +39,23 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
 
             switch (cmd) {
                 .dem_synctick => {
+                    std.debug.print("synctick!\n", .{});
                     break;
                 },
                 .dem_stop => {
+                    std.debug.print("dem_stop!\n", .{});
                     break :process_demo;
                 },
                 .dem_consolecmd => {
+                    std.debug.print("consolecmd!\n", .{});
                     try read_console_command(demo_file, null);
                 },
                 .dem_datatables => {
+                    std.debug.print("network datatables!\n", .{});
                     _ = try read_network_datatables(demo_file);
                 },
                 .dem_usercmd => {
+                    std.debug.print("user command!\n", .{});
                     _ = try read_user_cmd(demo_file, null);
                 },
                 else => {
@@ -59,6 +64,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
             }
         }
 
+        std.debug.print("regular command thingy u kno!\n", .{});
         try read_command_info(demo_file, null);
         try read_sequence_info(demo_file, null, null);
         _ = try read_raw_data(demo_file, null);

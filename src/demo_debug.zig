@@ -1,7 +1,7 @@
 const std = @import("std");
-const valve_types = @import("valve_types");
+const valve_types = @import("valve_types.zig");
 
-const DemoReadError = error{
+pub const DemoReadError = error{
     BadHeader,
     Corruption,
     EarlyTermination,

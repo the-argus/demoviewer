@@ -1,5 +1,5 @@
 const std = @import("std");
-const read_dem = @import("read_dem").read_dem;
+const read_dem = @import("read_dem.zig").read_dem;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
