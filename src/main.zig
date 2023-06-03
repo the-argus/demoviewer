@@ -138,6 +138,14 @@ pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
     return size;
 }
 
+pub fn read_console_command(file: std.fs.File, out: ?*[1024]u8) !void {
+    var buf: [1024]u8 = undefined;
+    read_raw_data(file, &buf);
+    if (out) |out_ptr| {
+        @memcpy(out_ptr, &buf);
+    }
+}
+
 pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence_number_out: ?*i32) !void {
     var buf: [@sizeOf(i32)]u8 = undefined;
 
@@ -160,12 +168,12 @@ pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence
 
 pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoCommandInfo) !void {
     var buf: [@sizeOf(valve_types.DemoCommandInfo)]u8 = undefined;
-    bytes_read = try file.read(&buf);
+    const bytes_read = try file.read(&buf);
     if (bytes_read < buf.len) {
         return DemoReadError.EarlyTermination;
     }
     if (command_info) |info| {
-        info.* = @bitCast(i32, buf);
+        info.* = @bitCast(valve_types.DemoCommandInfo, buf);
     }
 }
 
@@ -199,7 +207,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
                     break :process_demo;
                 },
                 .dem_consolecmd => {
-                    // TODO: read console command
+                    try read_console_command(demo_file, null);
                 },
                 .dem_datatables => {
                     // TODO: read network data tables (basically jus a seek)
@@ -213,7 +221,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
             }
         }
 
-        read_command_info(demo_file, null);
+        try read_command_info(demo_file, null);
         try read_sequence_info(demo_file, null, null);
         _ = try read_raw_data(demo_file, null);
     }
