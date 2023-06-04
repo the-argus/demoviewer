@@ -1,9 +1,12 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const valve_types = @import("valve_types.zig");
 
 const demo_debug = @import("demo_debug.zig");
 const print_packet = demo_debug.print_packet;
 const DemoReadError = demo_debug.DemoReadError;
+
+const log = std.log.scoped(.demoviewer);
 
 pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, tick: *i32) !void {
     // first read into cmd
@@ -13,7 +16,7 @@ pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, t
 
         // handle i/o failure
         if (bytes_read <= 0) {
-            std.debug.print("Missing end tag in demo file.\n", .{});
+            log.warn("Missing end tag in demo file.\n", .{});
             cmd.* = .dem_stop;
             return;
         }
@@ -123,16 +126,23 @@ pub fn read_network_datatables(file: std.fs.File) !usize {
             return DemoReadError.Corruption;
         }
         size = @intCast(usize, int_size);
+        log.debug(
+            \\Read expected size {any} bytes from network datatables header
+            \\Coerced to usize of {any}
+            \\
+        , .{ int_size, size });
     }
 
+    var bytes_read: usize = 0;
     while (size > 0) {
         const chunk: usize = std.math.min(size, 1024);
         const slice: []u8 = data[0..chunk];
-        _ = try file.read(slice);
+        bytes_read += try file.read(slice);
         size -= chunk;
         // TODO: add an "out" argument to this function, write to it here.
         // needs to be some sort of IO stream to allow continuous writing.
     }
+    log.debug("Actual amount of bytes read from network data tables: {any}\n", .{bytes_read});
 
     return size;
 }

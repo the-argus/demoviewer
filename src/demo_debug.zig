@@ -1,5 +1,6 @@
 const std = @import("std");
 const valve_types = @import("valve_types.zig");
+const log = std.log.scoped(.demoviewer);
 
 pub const DemoReadError = error{
     BadHeader,
@@ -11,7 +12,7 @@ pub const DemoReadError = error{
 };
 
 pub fn print_demo_header(demo_header: valve_types.DemoHeader) void {
-    std.debug.print(
+    log.info(
         \\Header: {s}
         \\Protocol: {any}
         \\Network Protocol: {any}
@@ -40,7 +41,7 @@ pub fn print_demo_header(demo_header: valve_types.DemoHeader) void {
 }
 
 pub fn print_packet(packet: valve_types.Packet) void {
-    std.debug.print(
+    log.info(
         \\Found packet:
         \\  cmd_type: {any}
         \\  unknown: {any}

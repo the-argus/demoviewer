@@ -15,6 +15,8 @@ const read_command_info = demo_sections.read_command_info;
 const read_sequence_info = demo_sections.read_sequence_info;
 const read_raw_data = demo_sections.read_raw_data;
 
+const log = std.log.scoped(.demoviewer);
+
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     const demo_file = try std.fs.cwd().openFile(relative_path, .{});
     defer demo_file.close();
@@ -39,23 +41,23 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
 
             switch (cmd) {
                 .dem_synctick => {
-                    std.debug.print("synctick!\n", .{});
+                    log.debug("synctick", .{});
                     break;
                 },
                 .dem_stop => {
-                    std.debug.print("dem_stop!\n", .{});
+                    log.debug("dem_stop", .{});
                     break :process_demo;
                 },
                 .dem_consolecmd => {
-                    std.debug.print("consolecmd!\n", .{});
+                    log.debug("consolecmd", .{});
                     try read_console_command(demo_file, null);
                 },
                 .dem_datatables => {
-                    std.debug.print("network datatables!\n", .{});
+                    log.debug("network datatables", .{});
                     _ = try read_network_datatables(demo_file);
                 },
                 .dem_usercmd => {
-                    std.debug.print("user command!\n", .{});
+                    log.debug("user command", .{});
                     _ = try read_user_cmd(demo_file, null);
                 },
                 else => {
@@ -64,7 +66,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
             }
         }
 
-        std.debug.print("regular command thingy u kno!\n", .{});
+        log.debug("standard command", .{});
         try read_command_info(demo_file, null);
         try read_sequence_info(demo_file, null, null);
         _ = try read_raw_data(demo_file, null);
