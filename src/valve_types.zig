@@ -1,3 +1,5 @@
+pub const DEMO_FILE_MAX_STRINGTABLE_SIZE: u32 = 5000000;
+
 pub const DemoHeader = extern struct {
     header: [8]u8,
     demo_protocol: i32,
@@ -31,6 +33,34 @@ pub const demo_messages =
     dem_stringtables,
     // Last command
     // dem_lastcmd = 8,
+};
+
+/// from public/tier1/bitbuf.h - used for unserialization. idk what "bf" is
+pub const BFRead = struct {};
+
+/// from public/tier1/netadr.h
+pub const NetAddressType = enum(u8) {
+    NA_NULL = 0,
+    NA_LOOPBACK,
+    NA_BROADCAST,
+    NA_IP,
+};
+pub const NetAddress = struct {
+    type: NetAddressType,
+    ip: [4]u8,
+    port: u16,
+};
+
+pub const NetPacket = struct {
+    from: NetAddressType, // sender IP
+    source: i32, // received source
+    received: f64, // received time
+    data: [*]u8, // pointer to raw packet data
+    message: NetAddress, // easy bitbuf data access
+    size: i32, // size in bytes
+    wiresize: i32, // size in bytes before decompression
+    stream: bool, // was send as stream
+    next: NetPacket, // for internal use, should be NULL in public
 };
 
 pub const Packet = extern struct {

@@ -1,3 +1,9 @@
+//
+// This file contains functions for reading different sections of a demo file.
+// TODO: refactor a lot of the shitty "out" reference variables and inconsistent
+// return types carried over from copying from the tf2 source code.
+//
+
 const std = @import("std");
 const builtin = @import("builtin");
 const valve_types = @import("valve_types.zig");
