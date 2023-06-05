@@ -17,7 +17,7 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     var cmd: valve_types.demo_messages = .dem_signon;
 
     while (true) {
-        reads.read_command_header(file, &cmd, &tick);
+        try reads.read_command_header(file, &cmd, &tick);
         // normally here there are checks for a bunch of member variables of
         // CDemoPlayer. in this case I don't want to allow for configuring the
         // reading of packets via state in a type, I would prefer an "options"
@@ -31,9 +31,11 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     _ = try reads.read_command_info(file, null);
     try reads.read_sequence_info(file, null, null);
 
-    var packet: valve_types.NetPacket = 0;
-    packet.recieved = std.time.Instant.now().timestamp;
-    packet.size = try reads.read_raw_data(file, null, null);
+    // FIXME: undefined behavior!! not all fields of packets are initialized
+    var packet: valve_types.NetPacket = undefined;
+    // TODO: figure out time in zig, fill recieved field
+    // packet.received = (try std.time.Instant.now()).timestamp;
+    packet.size = try reads.read_raw_data(file, null);
 
     return packet;
 }

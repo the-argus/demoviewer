@@ -15,6 +15,8 @@ const read_command_info = demo_sections.read_command_info;
 const read_sequence_info = demo_sections.read_sequence_info;
 const read_raw_data = demo_sections.read_raw_data;
 
+const read_packet = @import("read_packet.zig").read_packet;
+
 const log = std.log.scoped(.demoviewer);
 
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
@@ -32,43 +34,7 @@ pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     try assert_header_good(real_header, allocator);
     print_demo_header(real_header);
 
-    // const info : valve_types.DemoCommandInfo = undefined;
-    process_demo: while (true) {
-        var tick: i32 = 0;
-        var cmd: valve_types.demo_messages = undefined;
-        swallowing_messages: while (true) {
-            try read_command_header(demo_file, &cmd, &tick);
-
-            switch (cmd) {
-                .dem_synctick => {
-                    log.debug("synctick", .{});
-                    break;
-                },
-                .dem_stop => {
-                    log.debug("dem_stop", .{});
-                    break :process_demo;
-                },
-                .dem_consolecmd => {
-                    log.debug("consolecmd", .{});
-                    try read_console_command(demo_file, null);
-                },
-                .dem_datatables => {
-                    log.debug("network datatables", .{});
-                    _ = try read_network_datatables(demo_file);
-                },
-                .dem_usercmd => {
-                    log.debug("user command", .{});
-                    _ = try read_user_cmd(demo_file, null);
-                },
-                else => {
-                    break :swallowing_messages;
-                },
-            }
-        }
-
-        log.debug("standard command", .{});
-        try read_command_info(demo_file, null);
-        try read_sequence_info(demo_file, null, null);
-        _ = try read_raw_data(demo_file, null);
+    while (true) {
+        _ = try read_packet(demo_file);
     }
 }

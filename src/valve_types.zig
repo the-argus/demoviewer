@@ -60,7 +60,7 @@ pub const NetPacket = struct {
     size: i32, // size in bytes
     wiresize: i32, // size in bytes before decompression
     stream: bool, // was send as stream
-    next: NetPacket, // for internal use, should be NULL in public
+    // next: NetPacket, // for internal use, should be NULL in public
 };
 
 pub const Packet = extern struct {

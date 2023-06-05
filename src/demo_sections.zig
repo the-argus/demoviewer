@@ -15,6 +15,7 @@ const DemoReadError = demo_debug.DemoReadError;
 const log = std.log.scoped(.demoviewer);
 
 pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, tick: *i32) !void {
+    log.debug("Reading command header...", .{});
     // first read into cmd
     {
         var buf: [1]u8 = undefined;
@@ -53,6 +54,7 @@ pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, t
 
 /// Recieve a file and read an amount into the buffer. return amount read
 pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
+    log.debug("Reading raw data...", .{});
     // first get the size of the data packet
     var size_buffer: [@sizeOf(i32)]u8 = undefined;
     var bytes_read = try file.read(&size_buffer);
@@ -60,6 +62,7 @@ pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
         return DemoReadError.EarlyTermination;
     }
     const size = @bitCast(i32, size_buffer);
+    log.debug("Raw data expected size: {any}", .{size});
 
     // try to read that size into the buffer
     if (opt_buffer) |buffer| {
@@ -77,11 +80,13 @@ pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
             return DemoReadError.EarlyTermination;
         };
     }
+    log.debug("Bytes of raw data read match expected.", .{});
 
     return size;
 }
 
 pub fn read_console_command(file: std.fs.File, out: ?*[1024]u8) !void {
+    log.debug("Reading console command...", .{});
     var buf: [1024]u8 = undefined;
     var alt: []u8 = &buf;
     _ = try read_raw_data(file, &alt);
@@ -91,6 +96,7 @@ pub fn read_console_command(file: std.fs.File, out: ?*[1024]u8) !void {
 }
 
 pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence_number_out: ?*i32) !void {
+    log.debug("Reading sequence info...", .{});
     var buf: [@sizeOf(i32)]u8 = undefined;
 
     var bytes_read = try file.read(&buf);
@@ -111,6 +117,7 @@ pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence
 }
 
 pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoCommandInfo) !void {
+    log.debug("Reading command info...", .{});
     var buf: [@sizeOf(valve_types.DemoCommandInfo)]u8 = undefined;
     const bytes_read = try file.read(&buf);
     if (bytes_read < buf.len) {
@@ -122,6 +129,7 @@ pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoComm
 }
 
 pub fn read_network_datatables(file: std.fs.File) !usize {
+    log.debug("Reading network data tables...", .{});
     var data: [1024]u8 = undefined;
     var size: usize = undefined;
     {
@@ -154,6 +162,7 @@ pub fn read_network_datatables(file: std.fs.File) !usize {
 }
 
 pub fn read_user_cmd(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
+    log.debug("Reading user command...", .{});
     var outgoing_sequence: i32 = undefined;
     {
         var buf: [@sizeOf(i32)]u8 = undefined;
