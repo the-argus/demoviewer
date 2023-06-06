@@ -6,15 +6,6 @@ const DemoReadError = demo_debug.DemoReadError;
 const assert_header_good = demo_debug.assert_header_good;
 const print_demo_header = demo_debug.print_demo_header;
 
-const demo_sections = @import("demo_sections.zig");
-const read_command_header = demo_sections.read_command_header;
-const read_console_command = demo_sections.read_console_command;
-const read_network_datatables = demo_sections.read_network_datatables;
-const read_user_cmd = demo_sections.read_user_cmd;
-const read_command_info = demo_sections.read_command_info;
-const read_sequence_info = demo_sections.read_sequence_info;
-const read_raw_data = demo_sections.read_raw_data;
-
 const read_packet = @import("read_packet.zig").read_packet;
 
 const log = std.log.scoped(.demoviewer);
