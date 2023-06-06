@@ -13,17 +13,17 @@ pub const NetPacketReadError = error{
 };
 
 pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
-    var tick: i32 = undefined;
-    var cmd: valve_types.demo_messages = .dem_signon;
+    var last_command_header: valve_types.CommandHeader = undefined;
 
     while (true) {
-        try reads.read_command_header(file, &cmd, &tick);
+        const header_read = try reads.read_command_header(file);
+        last_command_header = header_read.unwrap();
         // normally here there are checks for a bunch of member variables of
         // CDemoPlayer. in this case I don't want to allow for configuring the
         // reading of packets via state in a type, I would prefer an "options"
         // input to this function.
 
-        if (!try perform_reads(file, cmd)) {
+        if (!try perform_reads(file, last_command_header.message)) {
             break;
         }
     }

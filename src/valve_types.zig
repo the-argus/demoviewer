@@ -1,5 +1,10 @@
 pub const DEMO_FILE_MAX_STRINGTABLE_SIZE: u32 = 5000000;
 
+pub const CommandHeader = struct {
+    message: demo_messages,
+    tick: i32,
+};
+
 pub const DemoHeader = extern struct {
     header: [8]u8,
     demo_protocol: i32,

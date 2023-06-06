@@ -14,25 +14,40 @@ const DemoReadError = demo_debug.DemoReadError;
 
 const log = std.log.scoped(.demoviewer);
 
-pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, tick: *i32) !void {
+pub fn ReadResults(comptime T: type) type {
+    return struct {
+        payload: T,
+        amount_read: usize,
+
+        pub fn unwrap(self: @This()) T {
+            return self.payload;
+        }
+    };
+}
+
+pub fn read_command_header(file: std.fs.File) !ReadResults(valve_types.CommandHeader) {
     log.debug("Reading command header...", .{});
+    var res: ReadResults(valve_types.CommandHeader) = undefined;
+    res.payload.tick = 0;
+    res.amount_read = 0;
     // first read into cmd
     {
         var buf: [1]u8 = undefined;
         const bytes_read = try file.read(&buf);
+        res.amount_read += bytes_read;
 
         // handle i/o failure
         if (bytes_read <= 0) {
             log.warn("Missing end tag in demo file.\n", .{});
-            cmd.* = .dem_stop;
-            return;
+            res.payload.message = .dem_stop;
+            return res;
         }
 
         // get actual demo value
         var valid_demo_message = false;
         for (std.enums.values(valve_types.demo_messages)) |message_type| {
             if (buf[0] == @enumToInt(message_type)) {
-                cmd.* = message_type;
+                res.payload.message = message_type;
                 valid_demo_message = true;
                 break;
             }
@@ -49,7 +64,9 @@ pub fn read_command_header(file: std.fs.File, cmd: *valve_types.demo_messages, t
     if (bytes_read <= 0) {
         return DemoReadError.EarlyTermination;
     }
-    tick.* = @bitCast(i32, buf);
+    res.payload.tick = @bitCast(i32, buf);
+    res.amount_read += bytes_read;
+    return res;
 }
 
 /// Recieve a file and read an amount into the buffer. return amount read
