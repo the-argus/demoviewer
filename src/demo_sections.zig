@@ -25,29 +25,32 @@ pub fn ReadResults(comptime T: type) type {
     };
 }
 
+/// Reads the command that sits after the demo header and every packet, saying what comes next
 pub fn read_command_header(file: std.fs.File) !ReadResults(valve_types.CommandHeader) {
     log.debug("Reading command header...", .{});
-    var res: ReadResults(valve_types.CommandHeader) = undefined;
-    res.payload.tick = 0;
-    res.amount_read = 0;
+    var result: ReadResults(valve_types.CommandHeader) = undefined;
+    result.payload.tick = 0;
+    result.payload.message = .dem_signon;
+    result.amount_read = 0;
     // first read into cmd
     {
         var buf: [1]u8 = undefined;
         const bytes_read = try file.read(&buf);
-        res.amount_read += bytes_read;
+        result.amount_read += bytes_read;
 
         // handle i/o failure
-        if (bytes_read <= 0) {
-            log.warn("Missing end tag in demo file.\n", .{});
-            res.payload.message = .dem_stop;
-            return res;
+        if (bytes_read < buf.len) {
+            return DemoReadError.EarlyTermination;
         }
 
         // get actual demo value
         var valid_demo_message = false;
+        // NOTE: this could be @intToEnum. it would be much
+        // faster, although it would cause the program to panic when reading
+        // invalid demos.
         for (std.enums.values(valve_types.demo_messages)) |message_type| {
             if (buf[0] == @enumToInt(message_type)) {
-                res.payload.message = message_type;
+                result.payload.message = message_type;
                 valid_demo_message = true;
                 break;
             }
@@ -61,12 +64,12 @@ pub fn read_command_header(file: std.fs.File) !ReadResults(valve_types.CommandHe
     // now read the tick
     var buf: [@sizeOf(i32)]u8 = undefined;
     const bytes_read = try file.read(&buf);
-    if (bytes_read <= 0) {
+    if (bytes_read < buf.len) {
         return DemoReadError.EarlyTermination;
     }
-    res.payload.tick = @bitCast(i32, buf);
-    res.amount_read += bytes_read;
-    return res;
+    result.payload.tick = @bitCast(i32, buf);
+    result.amount_read += bytes_read;
+    return result;
 }
 
 /// Recieve a file and read an amount into the buffer. return amount read
@@ -102,10 +105,10 @@ pub fn read_raw_data(file: std.fs.File, allocator: std.mem.Allocator) !ReadResul
     return res;
 }
 
-pub fn read_console_command(file: std.fs.File, allocator: std.mem.Allocator) ![]u8 {
+/// Equivalent to read_raw_data, at least for now
+pub fn read_console_command(file: std.fs.File, allocator: std.mem.Allocator) !ReadResults([]u8) {
     log.debug("Reading console command...", .{});
-    const cmd = try read_raw_data(file, allocator);
-    return cmd.payload;
+    return try read_raw_data(file, allocator);
 }
 
 pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence_number_out: ?*i32) !void {
@@ -176,20 +179,24 @@ pub fn read_network_datatables(file: std.fs.File) !usize {
 
 pub const UserCommand = struct {
     outgoing_sequence: i32,
-    payload: []u8,
+    command: []u8,
+    pub fn free(self: @This(), allocator: std.mem.Allocator) void {
+        allocator.free(self.command);
+    }
 };
-pub fn read_user_cmd(file: std.fs.File, allocator: std.mem.Allocator) !UserCommand {
+
+pub fn read_user_cmd(file: std.fs.File, allocator: std.mem.Allocator) !ReadResults(UserCommand) {
     log.debug("Reading user command...", .{});
-    var res: UserCommand = undefined;
+    var result: ReadResults(UserCommand) = undefined;
     {
         var buf: [@sizeOf(i32)]u8 = undefined;
         const bytes_read = try file.read(&buf);
         if (bytes_read < buf.len) {
             return DemoReadError.EarlyTermination;
         }
-        res.outgoing_sequence = @bitCast(i32, buf);
+        result.payload.outgoing_sequence = @bitCast(i32, buf);
     }
     const read_results = try read_raw_data(file, allocator);
-    res.payload = read_results.payload;
-    return res;
+    result.payload.command = read_results.payload;
+    return result;
 }
