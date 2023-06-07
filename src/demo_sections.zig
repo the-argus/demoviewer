@@ -55,6 +55,10 @@ pub fn read_command_header(file: std.fs.File) !ReadResults(valve_types.CommandHe
                 break;
             }
         }
+        if (result.payload.message == .dem_stop) {
+            log.info("Demo stopping code reached, exiting.", .{});
+            std.os.exit(0);
+        }
         // err on failure
         if (!valid_demo_message) {
             return DemoReadError.InvalidDemoMessage;
@@ -140,16 +144,17 @@ pub fn read_sequence_info(file: std.fs.File) !ReadResults(SequenceInfo) {
     return result;
 }
 
-pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoCommandInfo) !void {
+pub fn read_command_info(file: std.fs.File) !ReadResults(valve_types.DemoCommandInfo) {
     log.debug("Reading command info...", .{});
-    var buf: [@sizeOf(valve_types.DemoCommandInfo)]u8 = undefined;
-    const bytes_read = try file.read(&buf);
-    if (bytes_read < buf.len) {
+    var result: ReadResults(valve_types.DemoCommandInfo) = undefined;
+
+    const bytes_read = try file.read(@ptrCast(*[@sizeOf(valve_types.DemoCommandInfo)]u8, &result.payload));
+    if (bytes_read < @sizeOf(valve_types.DemoCommandInfo)) {
         return DemoReadError.EarlyTermination;
     }
-    if (command_info) |info| {
-        info.* = @bitCast(valve_types.DemoCommandInfo, buf);
-    }
+    result.amount_read = bytes_read;
+
+    return result;
 }
 
 pub fn read_network_datatables(file: std.fs.File) !usize {

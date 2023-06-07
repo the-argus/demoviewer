@@ -32,8 +32,8 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
         }
     }
 
-    _ = try reads.read_command_info(file, null);
-    try reads.read_sequence_info(file, null, null);
+    _ = try reads.read_command_info(file);
+    _ = try reads.read_sequence_info(file);
 
     // FIXME: undefined behavior!! not all fields of packets are initialized
     var packet: valve_types.NetPacket = undefined;
@@ -59,18 +59,18 @@ fn perform_reads(file: std.fs.File, allocator: std.mem.Allocator, cmd: valve_typ
         },
         .dem_consolecmd => {
             const console_command = try reads.read_console_command(file, allocator);
-            allocator.free(console_command);
+            allocator.free(console_command.unwrap());
         },
         .dem_datatables => {
             _ = try reads.read_network_datatables(file);
         },
         .dem_stringtables => {
             const stringtables = try reads.read_raw_data(file, allocator);
-            allocator.free(stringtables.payload);
+            allocator.free(stringtables.unwrap());
         },
         .dem_usercmd => {
             const user_command = try reads.read_user_cmd(file, allocator);
-            allocator.free(user_command.payload);
+            user_command.unwrap().free(allocator);
         },
         else => {
             return false;
