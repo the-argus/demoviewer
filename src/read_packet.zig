@@ -62,7 +62,8 @@ fn perform_reads(file: std.fs.File, allocator: std.mem.Allocator, cmd: valve_typ
             allocator.free(console_command.unwrap());
         },
         .dem_datatables => {
-            _ = try reads.read_network_datatables(file);
+            const network_datatables = try reads.read_network_datatables(file, allocator);
+            allocator.free(network_datatables.unwrap());
         },
         .dem_stringtables => {
             const stringtables = try reads.read_raw_data(file, allocator);
@@ -70,7 +71,7 @@ fn perform_reads(file: std.fs.File, allocator: std.mem.Allocator, cmd: valve_typ
         },
         .dem_usercmd => {
             const user_command = try reads.read_user_cmd(file, allocator);
-            user_command.unwrap().free(allocator);
+            user_command.unwrap().free_with(allocator);
         },
         else => {
             return false;

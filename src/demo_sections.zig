@@ -157,13 +157,15 @@ pub fn read_command_info(file: std.fs.File) !ReadResults(valve_types.DemoCommand
     return result;
 }
 
-pub fn read_network_datatables(file: std.fs.File) !usize {
+pub fn read_network_datatables(file: std.fs.File, allocator: std.mem.Allocator) !ReadResults([]u8) {
     log.debug("Reading network data tables...", .{});
-    var data: [1024]u8 = undefined;
+    var result: ReadResults([]u8) = undefined;
+    result.amount_read = 0;
     var size: usize = undefined;
     {
         var buf: [@sizeOf(i32)]u8 = undefined;
-        _ = try file.read(&buf);
+        const bytes_read = try file.read(&buf);
+        result.amount_read += bytes_read;
         const int_size = @bitCast(i32, buf);
         if (int_size < 0) {
             return DemoReadError.Corruption;
@@ -176,24 +178,18 @@ pub fn read_network_datatables(file: std.fs.File) !usize {
         , .{ int_size, size });
     }
 
-    var bytes_read: usize = 0;
-    while (size > 0) {
-        const chunk: usize = std.math.min(size, 1024);
-        const slice: []u8 = data[0..chunk];
-        bytes_read += try file.read(slice);
-        size -= chunk;
-        // TODO: add an "out" argument to this function, write to it here.
-        // needs to be some sort of IO stream to allow continuous writing.
-    }
+    result.payload = try allocator.alloc(u8, size);
+    const bytes_read = try file.read(result.payload);
+    result.amount_read += bytes_read;
     log.debug("Actual amount of bytes read from network data tables: {any}\n", .{bytes_read});
 
-    return size;
+    return result;
 }
 
 pub const UserCommand = struct {
     outgoing_sequence: i32,
     command: []u8,
-    pub fn free(self: @This(), allocator: std.mem.Allocator) void {
+    pub fn free_with(self: @This(), allocator: std.mem.Allocator) void {
         allocator.free(self.command);
     }
 };
