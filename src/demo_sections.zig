@@ -75,14 +75,14 @@ pub fn read_command_header(file: std.fs.File) !ReadResults(valve_types.CommandHe
 /// Recieve a file and read an amount into the buffer. return amount read
 pub fn read_raw_data(file: std.fs.File, allocator: std.mem.Allocator) !ReadResults([]u8) {
     log.debug("Reading raw data...", .{});
-    var res: ReadResults([]u8) = undefined;
-    res.amount_read = 0;
+    var result: ReadResults([]u8) = undefined;
+    result.amount_read = 0;
     // first get the size of the data packet
     // FIXME: low-prio, but there could be bugs/buffer overwrite if there is
     // integer overflow when reading the size from the heading of the raw data
     var size_buffer: [@sizeOf(i32)]u8 = undefined;
     var bytes_read = try file.read(&size_buffer);
-    res.amount_read += bytes_read;
+    result.amount_read += bytes_read;
     if (bytes_read < @sizeOf(i32)) {
         return DemoReadError.EarlyTermination;
     }
@@ -94,15 +94,15 @@ pub fn read_raw_data(file: std.fs.File, allocator: std.mem.Allocator) !ReadResul
 
     var buf = try allocator.alloc(u8, @intCast(usize, size));
     bytes_read = try file.read(buf);
-    res.amount_read += bytes_read;
+    result.amount_read += bytes_read;
     if (bytes_read != size) {
         allocator.free(buf);
         return DemoReadError.FileDoesNotMatchPromised;
     }
     log.debug("Bytes of raw data read match expected.", .{});
-    res.payload = buf;
+    result.payload = buf;
 
-    return res;
+    return result;
 }
 
 /// Equivalent to read_raw_data, at least for now
