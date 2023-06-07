@@ -70,46 +70,42 @@ pub fn read_command_header(file: std.fs.File) !ReadResults(valve_types.CommandHe
 }
 
 /// Recieve a file and read an amount into the buffer. return amount read
-pub fn read_raw_data(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
+pub fn read_raw_data(file: std.fs.File, allocator: std.mem.Allocator) !ReadResults([]u8) {
     log.debug("Reading raw data...", .{});
+    var res: ReadResults([]u8) = undefined;
+    res.amount_read = 0;
     // first get the size of the data packet
+    // FIXME: low-prio, but there could be bugs/buffer overwrite if there is
+    // integer overflow when reading the size from the heading of the raw data
     var size_buffer: [@sizeOf(i32)]u8 = undefined;
     var bytes_read = try file.read(&size_buffer);
+    res.amount_read += bytes_read;
     if (bytes_read < @sizeOf(i32)) {
         return DemoReadError.EarlyTermination;
     }
     const size = @bitCast(i32, size_buffer);
     log.debug("Raw data expected size: {any}", .{size});
+    if (size < 0) {
+        return DemoReadError.Corruption;
+    }
 
-    // try to read that size into the buffer
-    if (opt_buffer) |buffer| {
-        if (buffer.len < size) {
-            return DemoReadError.NotEnoughMemory;
-        }
-
-        bytes_read = try file.read(buffer.*);
-        if (bytes_read != size) {
-            return DemoReadError.FileDoesNotMatchPromised;
-        }
-    } else {
-        // skip the promised packet
-        file.seekBy(size) catch {
-            return DemoReadError.EarlyTermination;
-        };
+    var buf = try allocator.alloc(u8, @intCast(usize, size));
+    bytes_read = try file.read(buf);
+    res.amount_read += bytes_read;
+    if (bytes_read != size) {
+        allocator.free(buf);
+        return DemoReadError.FileDoesNotMatchPromised;
     }
     log.debug("Bytes of raw data read match expected.", .{});
+    res.payload = buf;
 
-    return size;
+    return res;
 }
 
-pub fn read_console_command(file: std.fs.File, out: ?*[1024]u8) !void {
+pub fn read_console_command(file: std.fs.File, allocator: std.mem.Allocator) ![]u8 {
     log.debug("Reading console command...", .{});
-    var buf: [1024]u8 = undefined;
-    var alt: []u8 = &buf;
-    _ = try read_raw_data(file, &alt);
-    if (out) |out_ptr| {
-        @memcpy(out_ptr, &buf);
-    }
+    const cmd = try read_raw_data(file, allocator);
+    return cmd.payload;
 }
 
 pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence_number_out: ?*i32) !void {
@@ -178,19 +174,22 @@ pub fn read_network_datatables(file: std.fs.File) !usize {
     return size;
 }
 
-pub fn read_user_cmd(file: std.fs.File, opt_buffer: ?*[]u8) !i32 {
+pub const UserCommand = struct {
+    outgoing_sequence: i32,
+    payload: []u8,
+};
+pub fn read_user_cmd(file: std.fs.File, allocator: std.mem.Allocator) !UserCommand {
     log.debug("Reading user command...", .{});
-    var outgoing_sequence: i32 = undefined;
+    var res: UserCommand = undefined;
     {
         var buf: [@sizeOf(i32)]u8 = undefined;
         const bytes_read = try file.read(&buf);
         if (bytes_read < buf.len) {
             return DemoReadError.EarlyTermination;
         }
-        outgoing_sequence = @bitCast(i32, buf);
+        res.outgoing_sequence = @bitCast(i32, buf);
     }
-    if (opt_buffer) |buf| {
-        _ = try read_raw_data(file, buf);
-    }
-    return outgoing_sequence;
+    const read_results = try read_raw_data(file, allocator);
+    res.payload = read_results.payload;
+    return res;
 }

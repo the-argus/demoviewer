@@ -15,6 +15,10 @@ pub const NetPacketReadError = error{
 pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     var last_command_header: valve_types.CommandHeader = undefined;
 
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    var allocator = gpa.allocator();
+
     while (true) {
         const header_read = try reads.read_command_header(file);
         last_command_header = header_read.unwrap();
@@ -23,7 +27,7 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
         // reading of packets via state in a type, I would prefer an "options"
         // input to this function.
 
-        if (!try perform_reads(file, last_command_header.message)) {
+        if (!try perform_reads(file, allocator, last_command_header.message)) {
             break;
         }
     }
@@ -35,13 +39,14 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     var packet: valve_types.NetPacket = undefined;
     // TODO: figure out time in zig, fill recieved field
     // packet.received = (try std.time.Instant.now()).timestamp;
-    packet.size = try reads.read_raw_data(file, null);
+    const packet_read_results = try reads.read_raw_data(file, allocator);
+    allocator.free(packet_read_results.payload);
 
     return packet;
 }
 
 /// based on a demo command, return whether or not you should continue reading.
-fn perform_reads(file: std.fs.File, cmd: valve_types.demo_messages) !bool {
+fn perform_reads(file: std.fs.File, allocator: std.mem.Allocator, cmd: valve_types.demo_messages) !bool {
     switch (cmd) {
         .dem_synctick => {
             // do NOTHING lol
@@ -53,16 +58,19 @@ fn perform_reads(file: std.fs.File, cmd: valve_types.demo_messages) !bool {
             return NetPacketReadError.StopPacket;
         },
         .dem_consolecmd => {
-            try reads.read_console_command(file, null);
+            const console_command = try reads.read_console_command(file, allocator);
+            allocator.free(console_command);
         },
         .dem_datatables => {
             _ = try reads.read_network_datatables(file);
         },
         .dem_stringtables => {
-            _ = try reads.read_raw_data(file, null);
+            const stringtables = try reads.read_raw_data(file, allocator);
+            allocator.free(stringtables.payload);
         },
         .dem_usercmd => {
-            _ = try reads.read_user_cmd(file, null);
+            const user_command = try reads.read_user_cmd(file, allocator);
+            allocator.free(user_command.payload);
         },
         else => {
             return false;
