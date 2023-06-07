@@ -111,25 +111,33 @@ pub fn read_console_command(file: std.fs.File, allocator: std.mem.Allocator) !Re
     return try read_raw_data(file, allocator);
 }
 
-pub fn read_sequence_info(file: std.fs.File, sequence_number_in: ?*i32, sequence_number_out: ?*i32) !void {
+pub const SequenceInfo = struct {
+    sequence_number_in: i32,
+    sequence_number_out: i32,
+};
+pub fn read_sequence_info(file: std.fs.File) !ReadResults(SequenceInfo) {
     log.debug("Reading sequence info...", .{});
     var buf: [@sizeOf(i32)]u8 = undefined;
+    var result: ReadResults(SequenceInfo) = undefined;
 
-    var bytes_read = try file.read(&buf);
-    if (bytes_read < buf.len) {
-        return DemoReadError.EarlyTermination;
-    }
-    if (sequence_number_in) |in| {
-        in.* = @bitCast(i32, buf);
+    {
+        var bytes_read = try file.read(&buf);
+        if (bytes_read < buf.len) {
+            return DemoReadError.EarlyTermination;
+        }
+        result.payload.sequence_number_in = @bitCast(i32, buf);
+        result.amount_read += bytes_read;
     }
 
-    bytes_read = try file.read(&buf);
-    if (bytes_read < buf.len) {
-        return DemoReadError.EarlyTermination;
+    {
+        var bytes_read = try file.read(&buf);
+        if (bytes_read < buf.len) {
+            return DemoReadError.EarlyTermination;
+        }
+        result.payload.sequence_number_out = @bitCast(i32, buf);
+        result.amount_read += bytes_read;
     }
-    if (sequence_number_out) |out| {
-        out.* = @bitCast(i32, buf);
-    }
+    return result;
 }
 
 pub fn read_command_info(file: std.fs.File, command_info: ?*valve_types.DemoCommandInfo) !void {
