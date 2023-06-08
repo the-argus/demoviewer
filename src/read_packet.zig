@@ -7,10 +7,15 @@
 const std = @import("std");
 const valve_types = @import("valve_types.zig");
 const reads = @import("demo_sections.zig");
+const log = std.log.scoped(.demoviewer);
 
 pub const NetPacketReadError = error{
     StopPacket,
 };
+
+fn print_vec(str: []const u8, v: valve_types.Vector) void {
+    log.info("{s}X: {}\tY: {}\tZ: {}", .{ str, v.x, v.y, v.z });
+}
 
 pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     var last_command_header: valve_types.CommandHeader = undefined;
@@ -32,8 +37,16 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
         }
     }
 
-    _ = try reads.read_command_info(file);
+    const cmd_info = (try reads.read_command_info(file)).unwrap();
     _ = try reads.read_sequence_info(file);
+
+    print_vec("view origin\t\t", cmd_info.view_origin);
+    print_vec("view origin 2\t\t", cmd_info.view_origin_2);
+    print_vec("view angles\t\t", cmd_info.view_angles);
+    print_vec("view angles 2\t\t", cmd_info.view_angles_2);
+    print_vec("local view angles\t", cmd_info.local_view_angles);
+    print_vec("local view angles 2\t", cmd_info.local_view_angles_2);
+    log.info("", .{});
 
     // FIXME: undefined behavior!! not all fields of packets are initialized
     var packet: valve_types.NetPacket = undefined;
