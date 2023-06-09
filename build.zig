@@ -45,5 +45,9 @@ pub fn build(b: *std.Build) !void {
         else => {},
     }
 
+    exe.addAnonymousModule("zig-clap", .{
+        .source_file = .{ .path = "libs/zig-clap/clap.zig" },
+    });
+
     b.installArtifact(exe);
 }
