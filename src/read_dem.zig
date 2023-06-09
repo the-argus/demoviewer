@@ -11,21 +11,30 @@ const read_packet = @import("read_packet.zig").read_packet;
 const log = std.log.scoped(.demoviewer);
 
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
-    const demo_file = try std.fs.cwd().openFile(relative_path, .{});
-    defer demo_file.close();
+    const demo_file = try open_demo(relative_path);
+    const header = read_header(demo_file);
+    try assert_header_good(header, allocator);
+    print_demo_header(header);
+    read_all_packets(demo_file);
+}
 
+pub fn open_demo(relative_path: []const u8) !std.fs.File {
+    return std.fs.cwd().openFile(relative_path, .{});
+}
+
+pub fn read_header(file: std.fs.File) !valve_types.DemoHeader {
     const header_size = @sizeOf(valve_types.DemoHeader);
     var header: [header_size]u8 = undefined;
-    const bytes_read_for_header = try demo_file.read(&header);
+    const bytes_read_for_header = try file.read(&header);
     if (bytes_read_for_header != header_size) {
         return DemoReadError.EarlyTermination;
     }
 
-    const real_header = @bitCast(valve_types.DemoHeader, header);
-    try assert_header_good(real_header, allocator);
-    print_demo_header(real_header);
+    return @bitCast(valve_types.DemoHeader, header);
+}
 
+pub fn read_all_packets(file: std.fs.File) !void {
     while (true) {
-        _ = try read_packet(demo_file);
+        _ = try read_packet(file);
     }
 }
