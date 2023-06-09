@@ -12,10 +12,10 @@ const log = std.log.scoped(.demoviewer);
 
 pub fn read_dem(relative_path: []const u8, allocator: std.mem.Allocator) !void {
     const demo_file = try open_demo(relative_path);
-    const header = read_header(demo_file);
+    const header = try read_header(demo_file);
     try assert_header_good(header, allocator);
     print_demo_header(header);
-    read_all_packets(demo_file);
+    try read_all_packets(demo_file);
 }
 
 pub fn open_demo(relative_path: []const u8) !std.fs.File {

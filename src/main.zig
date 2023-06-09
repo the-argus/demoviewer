@@ -29,23 +29,22 @@ pub fn main() !void {
     };
     defer parsed_args.deinit();
 
-    var program = read_full_demo;
+    var program = &read_full_demo;
 
     for (parsed_args.positionals) |positional_arg| {
-        program(positional_arg);
-        return;
+        return program(positional_arg);
     }
 }
 
-fn read_full_demo(filename: []u8) !void {
+fn read_full_demo(filename: []const u8) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    read_dem(filename, allocator);
+    try read_dem(filename, allocator);
 }
 
-fn read_only_header(filename: []u8) !void {
+fn read_only_header(filename: []const u8) !void {
     const demo_file = try dem_io.open_demo(filename);
     const header = try dem_io.read_header(demo_file);
     demo_debug.print_demo_header(header);
