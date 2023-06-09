@@ -1,6 +1,9 @@
 # I test out demos but I dont want them on git lol
 *.dem
 
+# maps for testing
+*.bsp
+
 # nix stuff
 .direnv/
 result
