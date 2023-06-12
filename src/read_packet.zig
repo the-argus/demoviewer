@@ -46,7 +46,6 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     print_vec("view angles 2\t\t", cmd_info.view_angles_2);
     print_vec("local view angles\t", cmd_info.local_view_angles);
     print_vec("local view angles 2\t", cmd_info.local_view_angles_2);
-    log.info("", .{});
 
     // FIXME: undefined behavior!! not all fields of packets are initialized
     var packet: valve_types.NetPacket = undefined;
