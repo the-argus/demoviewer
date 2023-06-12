@@ -40,9 +40,6 @@ pub const demo_messages =
     // dem_lastcmd = 8,
 };
 
-/// from public/tier1/bitbuf.h - used for unserialization. idk what "bf" is
-pub const BFRead = struct {};
-
 /// from public/tier1/netadr.h
 pub const NetAddressType = enum(u8) {
     NA_NULL = 0,
@@ -65,23 +62,7 @@ pub const NetPacket = struct {
     size: i32, // size in bytes
     wiresize: i32, // size in bytes before decompression
     stream: bool, // was send as stream
-    // next: NetPacket, // for internal use, should be NULL in public
-};
-
-pub const Packet = extern struct {
-    cmd_type: u8,
-    unknown: i32,
-    tickcount: i32,
-    size_of_packet: i32,
-    buffer: *[]u8, // where the length should be equal to size_of_packet
-};
-
-pub const Frame = extern struct {
-    server_frame: i32,
-    client_frame: i32,
-    subpacketsize: i32,
-    buffer: *[]u8, // length equal to subpacketsize
-    pkt: Packet,
+    next: *NetPacket, // for internal use, should be NULL in public
 };
 
 pub const Vector = extern struct { x: f32, y: f32, z: f32 };
