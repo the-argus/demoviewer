@@ -33,6 +33,14 @@ pub fn read_header(file: std.fs.File) !valve_types.DemoHeader {
     return @bitCast(valve_types.DemoHeader, header);
 }
 
+pub fn get_slice_from_cstring(cstr: []const u8) []const u8 {
+    const nullbyte = std.mem.indexOfScalar(u8, cstr, 0);
+    if (nullbyte) |index| {
+        return cstr[0..index];
+    }
+    return cstr;
+}
+
 pub fn read_all_packets(file: std.fs.File) !void {
     while (true) {
         _ = try read_packet(file);
