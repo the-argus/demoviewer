@@ -78,10 +78,14 @@ pub fn main() !void {
     // resolve where the map is
     // option A: its supplied on the commandline
 
-    var map_needs_free = parsed_args.args.mapfile == null;
-    input.map_file = parsed_args.args.mapfile orelse
-        try get_map_absolute_path(allocator, &input, &parsed_args, &params);
-    defer if (map_needs_free) allocator.free(input.map_file.?);
+    input.map_file = if (parsed_args.args.mapfile) |mapfile| block: {
+        var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+        const cwd = try std.os.getcwd(&buf);
+        break :block try std.fs.path.join(allocator, &[_][]const u8{ cwd, mapfile });
+    } else block: {
+        break :block try get_map_absolute_path(allocator, &input, &parsed_args, &params);
+    };
+    defer allocator.free(input.map_file.?);
 
     if (input.print_only_map_info) {
         return read_bsp(input.map_file.?);
