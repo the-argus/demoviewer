@@ -77,13 +77,11 @@ pub fn main() !void {
     // okay, we are going to need the map file for all remaining cases
     // resolve where the map is
     // option A: its supplied on the commandline
-    if (parsed_args.args.mapfile) |mapfile| {
-        input.map_file = mapfile;
-    } else {
-        // option B: find the map in tfpath based on the name in the demo header
-        input.map_file = try get_map_absolute_path(allocator, &input, &parsed_args, &params);
-    }
-    defer allocator.free(input.map_file.?);
+
+    var map_needs_free = parsed_args.args.mapfile == null;
+    input.map_file = parsed_args.args.mapfile orelse
+        try get_map_absolute_path(allocator, &input, &parsed_args, &params);
+    defer if (map_needs_free) allocator.free(input.map_file.?);
 
     if (input.print_only_map_info) {
         return read_bsp(input.map_file.?);
