@@ -106,7 +106,7 @@ pub fn read_command_info(file: std.fs.File) !valve_types.DemoCommandInfo {
 pub fn read_network_datatables(file: std.fs.File, allocator: std.mem.Allocator) ![]u8 {
     log.debug("Reading network data tables...", .{});
     var data_table_length = block: {
-        const int_size = try .payloadreadObject(file, i32);
+        const int_size = try readObject(file, i32);
         if (int_size < 0) {
             return DemoReadError.Corruption;
         }
