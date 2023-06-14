@@ -1,5 +1,7 @@
 const std = @import("std");
 const types = @import("types.zig");
+const demoviewer_io = @import("../io.zig");
+const readObject = demoviewer_io.readObject;
 
 const BspReadError = error{
     EarlyTermination,
@@ -13,15 +15,7 @@ pub fn read_bsp(absolute_path: []const u8) !void {
     const bsp_file = try std.fs.openFileAbsolute(absolute_path, .{ .mode = .read_only });
     defer bsp_file.close();
 
-    var header: types.Header = undefined;
-    {
-        var buf: [@sizeOf(types.Header)]u8 = undefined;
-        const bytes_read = try bsp_file.read(&buf);
-        if (bytes_read < buf.len) {
-            return BspReadError.EarlyTermination;
-        }
-        header = @bitCast(types.Header, buf);
-    }
+    const header = try readObject(bsp_file, types.Header);
 
     log.debug("identifier: {}", .{header.ident});
     log.debug("bsp file version: {}", .{header.version});

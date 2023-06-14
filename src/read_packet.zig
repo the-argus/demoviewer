@@ -25,8 +25,7 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     var allocator = gpa.allocator();
 
     while (true) {
-        const header_read = try reads.read_command_header(file);
-        last_command_header = header_read.unwrap();
+        last_command_header = try reads.read_command_header(file);
         // normally here there are checks for a bunch of member variables of
         // CDemoPlayer. in this case I don't want to allow for configuring the
         // reading of packets via state in a type, I would prefer an "options"
@@ -37,7 +36,7 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
         }
     }
 
-    const cmd_info = (try reads.read_command_info(file)).unwrap();
+    const cmd_info = try reads.read_command_info(file);
     _ = try reads.read_sequence_info(file);
 
     print_vec("view origin\t\t", cmd_info.view_origin);
@@ -52,7 +51,7 @@ pub fn read_packet(file: std.fs.File) !valve_types.NetPacket {
     // TODO: figure out time in zig, fill recieved field
     // packet.received = (try std.time.Instant.now()).timestamp;
     const packet_read_results = try reads.read_raw_data(file, allocator);
-    allocator.free(packet_read_results.payload);
+    allocator.free(packet_read_results);
 
     return packet;
 }
@@ -71,19 +70,19 @@ fn perform_reads(file: std.fs.File, allocator: std.mem.Allocator, cmd: valve_typ
         },
         .dem_consolecmd => {
             const console_command = try reads.read_console_command(file, allocator);
-            allocator.free(console_command.unwrap());
+            allocator.free(console_command);
         },
         .dem_datatables => {
             const network_datatables = try reads.read_network_datatables(file, allocator);
-            allocator.free(network_datatables.unwrap());
+            allocator.free(network_datatables);
         },
         .dem_stringtables => {
             const stringtables = try reads.read_raw_data(file, allocator);
-            allocator.free(stringtables.unwrap());
+            allocator.free(stringtables);
         },
         .dem_usercmd => {
             const user_command = try reads.read_user_cmd(file, allocator);
-            user_command.unwrap().free_with(allocator);
+            user_command.free_with(allocator);
         },
         else => {
             return false;
