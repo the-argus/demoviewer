@@ -33,7 +33,7 @@ pub fn main() !void {
     try cli_interface.stage2(allocator);
 
     if (cli_interface.input.?.print_only_map_info) {
-        return read_bsp(cli_interface.input.?.map_file.?);
+        return read_bsp(allocator, cli_interface.input.?.map_file.?);
     }
 
     return try read_dem(cli_interface.input.?.demo_file.?, allocator);
