@@ -4,6 +4,7 @@ const types = @import("types.zig");
 const lump_types = @import("lump_types.zig");
 const demoviewer_io = @import("../io.zig");
 const readObject = demoviewer_io.readObject;
+const print_lump = @import("lump_debug.zig").print_lump;
 
 const BspReadError = error{
     EarlyTermination,
@@ -28,7 +29,7 @@ pub fn read_bsp(allocator: std.mem.Allocator, absolute_path: []const u8) !void {
     }
     if (header.version != types.TF2_BSP_VERSION) {
         log.warn("BSP format version {} does not match expected {}", .{ header.version, types.TF2_BSP_VERSION });
-        log.info("This demo file may be from a game which used a different version of the source/quake engine.", .{});
+        log.info("This BSP file may be from a game which used a different version of the source/quake engine.", .{});
     }
 
     const planes = try read_lump(bsp_file, allocator, &header.lumps, lump_types.lump_type_enum.LUMP_PLANES);
@@ -48,6 +49,7 @@ pub fn read_lump(
     const index = comptime @enumToInt(lump_type);
     const realtype = comptime lump_types.lump_index_to_type(index);
     const lump = all_lumps.*[index];
+    print_lump(lump, &log.debug);
     try file.seekTo(@intCast(u64, lump.file_offset));
 
     const bytes_to_alloc = lump.len;
