@@ -25,6 +25,7 @@ pub fn build(b: *std.Build) !void {
             exe.linkSystemLibrary("winmm");
             exe.linkSystemLibrary("gdi32");
             exe.linkSystemLibrary("opengl32");
+            // TODO: add link for lzlib
         },
         //dunno why but macos target needs sometimes 2 tries to build
         .macos => {
@@ -34,6 +35,7 @@ pub fn build(b: *std.Build) !void {
             exe.linkSystemLibrary("CoreAudio");
             exe.linkSystemLibrary("CoreVideo");
             exe.linkSystemLibrary("IOKit");
+            // TODO: add link for lzlib
         },
         .linux => {
             exe.linkSystemLibrary("GL");
@@ -41,6 +43,7 @@ pub fn build(b: *std.Build) !void {
             exe.linkSystemLibrary("dl");
             exe.linkSystemLibrary("m");
             exe.linkSystemLibrary("X11");
+            exe.linkSystemLibrary("lz");
         },
         else => {},
     }

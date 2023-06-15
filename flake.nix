@@ -40,6 +40,8 @@
               self.packages.${system}.zig
               llvmPackages_16.lldb
 
+              lzlib
+
               libGL
             ])
             ++ (with pkgs.xorg; [

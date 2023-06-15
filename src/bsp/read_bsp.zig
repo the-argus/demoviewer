@@ -5,6 +5,7 @@ const lump_types = @import("lump_types.zig");
 const demoviewer_io = @import("../io.zig");
 const readObject = demoviewer_io.readObject;
 const print_lump = @import("lump_debug.zig").print_lump;
+const decompress_data = @import("decompression.zig").decompress_data;
 
 const BspReadError = error{
     EarlyTermination,
@@ -76,6 +77,15 @@ pub fn read_lump(
             , .{});
             log.debug("lump.len: {}\t@sizeOf(realtype): {}\tDecimal remainder: {}", .{ lump.len, @sizeOf(realtype), decimal });
             if (builtin.mode == .Debug) {
+                log.debug("diagnosing...", .{});
+                try file.seekTo(@intCast(u64, lump.file_offset));
+                const lzma_header = try readObject(file, types.CompressedLumpDataLZMAHeader);
+                log.debug(
+                    \\id: {}
+                    \\actual_size: {}
+                    \\lzma_size: {}
+                    \\properties: {any}
+                , .{ lzma_header.id, lzma_header.actual_size, lzma_header.lzma_size, lzma_header.properties });
                 return BspReadError.Corruption;
             }
         }

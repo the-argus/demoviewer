@@ -19,3 +19,10 @@ pub const Lump = extern struct {
     version: i32,
     fourCC: [4]u8, // ident code
 };
+
+pub const CompressedLumpDataLZMAHeader = extern struct {
+    id: u32,
+    actual_size: u32,
+    lzma_size: u32,
+    properties: [5]u8,
+};
