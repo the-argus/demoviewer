@@ -63,6 +63,8 @@ pub const CLIState = struct {
 
     /// Get the tfpath and map file path
     pub fn stage2(self: *@This(), allocator: std.mem.Allocator) !void {
+        // TODO: this is garbage. add detection to see if the CLI input is an absolute or relative patha
+        // before doing this concatenation.
         std.debug.assert(self.input != null);
         self.*.input.?.map_file = if (self.*.parsed_args.args.mapfile) |mapfile| block: {
             // mapfile supplied specifically, just append the name to the CWD

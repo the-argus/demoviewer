@@ -1,10 +1,11 @@
+const mem = @import("std").mem;
 pub const HEADER_LUMPS = 64;
-pub const HEADER_IDENT = (('P' << 24) + ('S' << 16) + ('B' << 8) + 'V');
+pub const HEADER_IDENT = mem.readIntLittle(u32, "VBSP");
 pub const TF2_BSP_VERSION = 20;
 
 // little-endian "LZMA"
 // if this appears at the beginning of lump data, it is compressed
-pub const LZMA_ID: u32 = (('A' << 24) | ('M' << 16) | ('Z' << 8) | ('L'));
+pub const LZMA_ID = mem.readIntLittle(u32, "LZMA");
 
 pub const Header = extern struct {
     ident: i32 = HEADER_IDENT,
