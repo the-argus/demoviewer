@@ -1,4 +1,7 @@
-const lzlib = @cImport(@cInclude("lzlib.h"));
+const lzlib = @cImport({
+    @cInclude("stdint.h");
+    @cInclude("lzlib.h");
+});
 const std = @import("std");
 
 const DecompressionError = error{
