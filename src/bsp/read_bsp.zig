@@ -89,7 +89,6 @@ fn read_lump_data_compressed(
     lump: types.Lump,
     lzma_header: types.CompressedLumpDataLZMAHeader,
 ) ![]LumpDataType {
-    _ = lzma_header;
     try file.seekTo(@intCast(u64, lump.file_offset) + @sizeOf(types.CompressedLumpDataLZMAHeader));
     // perform a massive heap allocation of this lump's whole data
     var rawmem = try allocator.alloc(u8, @intCast(usize, lump.len));
@@ -100,7 +99,7 @@ fn read_lump_data_compressed(
         return BspReadError.EarlyTermination;
     }
 
-    return decompress_data(LumpDataType, rawmem, allocator);
+    return decompress_data(LumpDataType, rawmem, lzma_header.actual_size, allocator);
 }
 
 /// read lump data directly from a file if the lump's data is not compressed
