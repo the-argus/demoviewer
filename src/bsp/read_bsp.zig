@@ -4,7 +4,8 @@ const types = @import("types.zig");
 const lump_types = @import("lump_types.zig");
 const demoviewer_io = @import("../io.zig");
 const readObject = demoviewer_io.readObject;
-const print_lump = @import("lump_debug.zig").print_lump;
+const lump_debug = @import("lump_debug.zig");
+const print_lump = lump_debug.print_lump;
 const decompress_data = @import("decompression.zig").decompress_data;
 
 const BspReadError = error{
@@ -54,7 +55,7 @@ pub fn read_lump(
     try file.seekTo(@intCast(u64, lump.file_offset));
 
     const bytes_to_alloc = lump.len;
-    // sanity check
+    // sanity check the lump header, which was already read
     {
         const filesize = (try file.metadata()).size();
         if (bytes_to_alloc >= filesize or bytes_to_alloc < 0) {
@@ -65,40 +66,76 @@ pub fn read_lump(
         }
     }
 
-    var lump_items_to_read = block: {
-        const num = @intToFloat(f32, lump.len) / @intToFloat(f32, @sizeOf(realtype));
-        const decimal = @mod(num, 1);
-        if (decimal != 0) {
-            log.warn(
-                \\Lump length is not evenly divisible by lump size.
-                \\Either the zig type does not match the size of the original
-                \\C++ struct, or some corruption or misread is happening.
-                \\
-            , .{});
-            log.debug("lump.len: {}\t@sizeOf(realtype): {}\tDecimal remainder: {}", .{ lump.len, @sizeOf(realtype), decimal });
-            if (builtin.mode == .Debug) {
-                log.debug("diagnosing...", .{});
-                try file.seekTo(@intCast(u64, lump.file_offset));
-                const lzma_header = try readObject(file, types.CompressedLumpDataLZMAHeader);
-                log.debug(
-                    \\id: {}
-                    \\actual_size: {}
-                    \\lzma_size: {}
-                    \\properties: {any}
-                , .{ lzma_header.id, lzma_header.actual_size, lzma_header.lzma_size, lzma_header.properties });
-                return BspReadError.Corruption;
-            }
+    // start reading by trying a lzma header and seeing if the actual size corresponds
+    {
+        const lzma_header = try readObject(file, types.CompressedLumpDataLZMAHeader);
+        if (lzma_header.lzma_size == lump.len - @sizeOf(types.CompressedLumpDataLZMAHeader)) {
+            // this is probably not a coincidence...
+            log.debug("Reading compressed lump data...", .{});
+            return read_lump_data_compressed(realtype, file, allocator, lump, lzma_header);
         }
-        break :block @floatToInt(usize, num);
-    };
+    }
+
+    log.debug("Reading UNcompressed lump data...", .{});
+    return read_lump_data_uncompressed(realtype, file, allocator, lump);
+}
+
+/// Read the data a lump in a BSP file is pointing to, assuming it is compressed
+/// does not check if lump.len is valid, may panic
+fn read_lump_data_compressed(
+    comptime LumpDataType: type,
+    file: std.fs.File,
+    allocator: std.mem.Allocator,
+    lump: types.Lump,
+    lzma_header: types.CompressedLumpDataLZMAHeader,
+) ![]LumpDataType {
+    _ = lzma_header;
+    try file.seekTo(@intCast(u64, lump.file_offset) + @sizeOf(types.CompressedLumpDataLZMAHeader));
+    // perform a massive heap allocation of this lump's whole data
+    var rawmem = try allocator.alloc(u8, @intCast(usize, lump.len));
+    defer allocator.free(rawmem);
+    const bytes_read = try file.read(rawmem);
+
+    if (bytes_read != rawmem.len) {
+        return BspReadError.EarlyTermination;
+    }
+
+    return decompress_data(LumpDataType, rawmem, allocator);
+}
+
+/// read lump data directly from a file if the lump's data is not compressed
+fn read_lump_data_uncompressed(comptime LumpDataType: type, file: std.fs.File, allocator: std.mem.Allocator, lump: types.Lump) ![]LumpDataType {
+    try file.seekTo(@intCast(u64, lump.file_offset));
+
+    var lump_items_to_read = try get_items_in_lump_data(LumpDataType, lump);
 
     // safe to intcast since we did the check
-    var mem = try allocator.alloc(realtype, lump_items_to_read);
+    var mem = try allocator.alloc(LumpDataType, lump_items_to_read);
 
     while (lump_items_to_read > 0) {
         lump_items_to_read -= 1;
-        mem[lump_items_to_read] = try readObject(file, realtype);
+        mem[lump_items_to_read] = try readObject(file, LumpDataType);
     }
 
     return mem;
+}
+
+/// does not check if lump.len is valid, may panic
+fn get_items_in_lump_data(comptime LumpDataType: type, lump: types.Lump) !usize {
+    // TODO: this decimal remainder check is unecessary, remove it or move it to some assert_compression_good or something
+    const num = @intToFloat(f32, lump.len) / @intToFloat(f32, @sizeOf(LumpDataType));
+    const decimal = @mod(num, 1);
+    if (decimal != 0) {
+        log.warn(
+            \\Lump length is not evenly divisible by lump size.
+            \\Either the zig type does not match the size of the original
+            \\C++ struct, or some corruption or misread is happening.
+            \\
+        , .{});
+        log.debug("lump.len: {}\t@sizeOf(LumpDataType): {}\tDecimal remainder: {}", .{ lump.len, @sizeOf(LumpDataType), decimal });
+        if (builtin.mode == .Debug) {
+            return BspReadError.Corruption;
+        }
+    }
+    return @floatToInt(usize, num);
 }
