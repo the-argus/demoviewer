@@ -68,8 +68,21 @@ pub fn read_lump(
 
     // start reading by trying a lzma header and seeing if the actual size corresponds
     {
-        const lzma_header = try readObject(file, types.CompressedLumpDataLZMAHeader);
-        if (lzma_header.lzma_size == lump.len - @sizeOf(types.CompressedLumpDataLZMAHeader)) {
+        const orig_pos = try file.getPos();
+
+        // TODO: create a generic solution for this. reading a type w/o padding.
+        var lzma_header: types.CompressedLumpDataLZMAHeader = undefined;
+        lzma_header.id = try readObject(file, @TypeOf(lzma_header.id));
+        lzma_header.actual_size = try readObject(file, @TypeOf(lzma_header.actual_size));
+        lzma_header.lzma_size = try readObject(file, @TypeOf(lzma_header.lzma_size));
+        lzma_header.properties = try readObject(file, @TypeOf(lzma_header.properties));
+
+        lump_debug.print_lump_lzma_header(lzma_header, &log.debug);
+
+        const final_pos = try file.getPos();
+        const total_read = final_pos - orig_pos;
+
+        if (lzma_header.lzma_size == @intCast(u64, lump.len) - total_read) {
             // this is probably not a coincidence...
             log.debug("Reading compressed lump data...", .{});
             return read_lump_data_compressed(realtype, file, allocator, lump, lzma_header);
